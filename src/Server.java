@@ -3,22 +3,17 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Random;
-import java.util.Scanner;
+import java.util.*;
 
 public class Server {
     private static DatagramSocket socket;
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        boolean GameIsOver = false;
+        boolean gameIsOver = false;
         Scanner sc = new Scanner(System.in);
         socket = new DatagramSocket(9087);
-        DatagramPacket packetToSend, packetToReceive;
         int amountOfPlayers, amountOfMafia;
         ArrayList<Client> players = new ArrayList<>();
-        String message; byte[] msg;
 
         System.out.println("Сколько игроков?: ");
         amountOfPlayers = sc.nextInt();
@@ -55,16 +50,16 @@ public class Server {
         {
             if(mafiaIndexes.contains(i))
             {
-                players.get(i).setRole("Mafia");
+                players.get(i).setRole("Мафия");
 
             }
             else if(i == policeIndex)
             {
-                players.get(i).setRole("Police");
+                players.get(i).setRole("Комисса");
             }
             else
             {
-                players.get(i).setRole("Citizen");
+                players.get(i).setRole("Гражданин");
             }
             sendMessage(players.get(i).getAddress(), players.get(i).getPort(), "Вы " + players.get(i).getRole());
         }
@@ -75,27 +70,76 @@ public class Server {
             sendMessage(p.getAddress(), p.getPort(), "Игра началась!");
         }
 
-        System.out.println("Город засыпает, просыпается мафия!");
+
 
         StringBuilder mafiaList = new StringBuilder(); //создание списка мафиози для их знакомства
         for(Client p : players)
         {
             mafiaList.append("|  ");
-            if (p.getRole() == "Mafia")
+            if (p.getRole() == "Мафия")
                 mafiaList.append(p.getName() + "  |  ");
         }
 
+        System.out.println("Город засыпает, просыпается мафия!");
         for(Client p : players)
         {
             sendMessage(p.getAddress(), p.getPort(), "Город засыпает, просыпается мафия!");
-            if(p.getRole() == "Mafia")
+            if(p.getRole() == "Мафия")
             {
-                sendMessage(p.getAddress(), p.getPort(), "Мафия: " + mafiaList);
+                sendMessage(p.getAddress(), p.getPort(), "Знакомьтесь, мафия: " + mafiaList);
             }
         }
+        Thread.sleep(5000);
 
+        while(!gameIsOver) {
+            ArrayList<String> votes = new ArrayList<>();
+            System.out.println("Город просыпается, пора обсудить, кого выгнать! Чтобы проголосовать, введите /имяигрока");
+            for(Client p : players)
+            {
+                sendMessage(p.getAddress(), p.getPort(), "Город просыпается, пора обсудить, кого выгнать! Чтобы проголосовать, введите /имяигрока");
+            }
+            int count = 0;
+            while (count < amountOfPlayers) {
+                String msg = receiveMessage();
+                if (msg.contains("/"))
+                {
+                    votes.add(msg.replace("/", ""));
+                }
+                for (Client p : players) {
+                    sendMessage(p.getAddress(), p.getPort(), msg);
+                }
+            }
+            System.out.println("Голосование завершено! Выбывает игрок: " + getMaxFreqName(votes));
+            for(Client p : players)
+            {
+                if (p.getName() == getMaxFreqName(votes))
+                {
+                    players.remove(p);
+                    if(p.getRole() == "Мафия")
+                    {
+                        System.out.println(p.getName() + " был мафией!");
+                        amountOfMafia--;
+                        amountOfPlayers--;
+                    }
+                    else if(p.getRole() == "Комиссар")
+                    {
+                        System.out.println(p.getName() + " был комиссаром!");
+                        amountOfPlayers--;
+                    }
+                    else
+                    {
+                        System.out.println(p.getName() + " был гражданином!");
+                        amountOfPlayers--;
+                    }
+                    break;
+                }
+            }
 
+            System.out.println("Город засыпает, просыпается мафия, чтобы выбрать жертву... Мафия, обсуждайте в чате и голосуйте /имяигрока");
+            votes = new ArrayList<>();
+        }
     }
+
 
     public static void sendMessage(InetAddress address, int port, String message) throws IOException
     {
@@ -110,5 +154,21 @@ public class Server {
         DatagramPacket packet = new DatagramPacket(data, 0, data.length);
         socket.receive(packet);
         return new String(packet.getData());
+    }
+
+    public static String getMaxFreqName(ArrayList<String> names)
+    {
+        int mFreq = 0;
+        String mFreqName = null;
+        for(int i = 0; i < names.size(); i++)
+        {
+            int freq = Collections.frequency(names, names.get(i));
+            if (freq > mFreq)
+            {
+                mFreq = freq;
+                mFreqName = names.get(i);
+            }
+        }
+        return mFreqName;
     }
 }

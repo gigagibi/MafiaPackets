@@ -2,16 +2,26 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.Scanner;
 
 public class Client {
-    private int port;
-    private InetAddress address;
-    private String name;
-    private String role;
+    private static int port;
+    private static InetAddress address;
+    private static String name;
+    private static String role;
     private static DatagramSocket socket;
 
-    public static void main(String[] args) {
-
+    public static void main(String[] args) throws IOException{
+        Scanner sc = new Scanner(System.in);
+        System.out.println("Введите ваше имя");
+        name = sc.nextLine();
+        sendMessage("127.0.0.1", 9087, name);
+        String data = receiveMessage();
+        while(data != "Игра окончена!")
+        {
+            System.out.println(data);
+            //if(data == "")
+        }
     }
 
     public Client(int port, InetAddress address, String name) {
