@@ -41,7 +41,7 @@ public class Client {
             {
                 @Override
                 public void run() {
-                    while(!message.contains("Голосование завершено!"))
+                    while(true)
                     {
                         msg.set(sc.nextLine());
                         try {
@@ -70,8 +70,7 @@ public class Client {
 
             data = receiveMessage(socket); //Город просыпается, обсуждается, кто мафия
             System.out.println(data);
-
-            write.start(); //начинается общение
+            write.start();
             output.start(); //начинается общение
 
             data = receiveMessage(socket);//сообщение о роли выбывшего
@@ -82,7 +81,6 @@ public class Client {
 
             if(data.contains("Мафия, обсуждайте в чате и голосуйте /имяигрока"))
             {
-                write.start();
                 output.start();
             }
 
@@ -94,13 +92,12 @@ public class Client {
 
             if(data.contains("Комиссар, введите имя игрока"))
             {
-                write.start();
                 output.start();
-                if(message.contains("Голосование завершено!"))
+                /*if(message.contains("Голосование завершено!"))
                 {
                     write.interrupt();
                     output.interrupt();
-                }
+                }*/
             }
 
             data = receiveMessage(socket);//игра окончена или фаза утра
