@@ -3,25 +3,114 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class Client {
-    private static int port;
-    private static InetAddress address;
-    private static String name;
-    private static String role;
-    private static DatagramSocket socket;
+    private int port;
+    private InetAddress address;
+    private String name, message;
+    private String role;
+    private DatagramSocket socket;
 
-    public static void main(String[] args) throws IOException{
+    public void run() throws IOException{
+        socket = new DatagramSocket();
         Scanner sc = new Scanner(System.in);
         System.out.println("Введите ваше имя");
         name = sc.nextLine();
-        sendMessage("127.0.0.1", 9087, name);
-        String data = receiveMessage();
-        while(data != "Игра окончена!")
+        sendMessage(socket,  "127.0.0.1", 9087, name);
+
+        String data = receiveMessage(socket); //либо вы мафия, либо житель (комиссар)
+        System.out.println(data);
+
+        data = receiveMessage(socket);//Игра началась!
+        System.out.println(data);
+
+        data = receiveMessage(socket);//Город засыпает, просыпается мафия!
+        System.out.println(data);
+
+
+        AtomicReference<String> msg = new AtomicReference<String>();
+        msg.set("notnull");
+        message = "уаыуа";
+
+        data = receiveMessage(socket);//Жители спят, мафия знакомится (возвращается список мафиози)
+        System.out.println(data);
+        while(data != "Игра окончена! Победили жители" || data!= "Игра окончена! Победила мафия")
         {
+            Thread write = new Thread(new Runnable()
+            {
+                @Override
+                public void run() {
+                    while(!message.contains("Голосование завершено!"))
+                    {
+                        msg.set(sc.nextLine());
+                        try {
+                            sendMessage(socket, "127.0.0.1", 9087, "|"+name+"|"+msg);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            });
+            Thread output = new Thread(new Runnable()
+            {
+                @Override
+                public void run() {
+                    while(!message.contains("Голосование завершено!"))
+                    {
+                        try {
+                            message = receiveMessage(socket);
+                            System.out.println(message);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            });
+
+            data = receiveMessage(socket); //Город просыпается, обсуждается, кто мафия
             System.out.println(data);
-            //if(data == "")
+
+            write.start(); //начинается общение
+            output.start(); //начинается общение
+
+            data = receiveMessage(socket);//сообщение о роли выбывшего
+            System.out.println(data);
+
+            data = receiveMessage(socket); //Город засыпает, мафия выбирает жертву
+            System.out.println(data);
+
+            if(data.contains("Мафия, обсуждайте в чате и голосуйте /имяигрока"))
+            {
+                write.start();
+                output.start();
+            }
+
+            data = receiveMessage(socket);//смерть жертвы
+            System.out.println(data);
+
+            data = receiveMessage(socket);//комиссар в действии
+            System.out.println(data);
+
+            if(data.contains("Комиссар, введите имя игрока"))
+            {
+                write.start();
+                output.start();
+                if(message.contains("Голосование завершено!"))
+                {
+                    write.interrupt();
+                    output.interrupt();
+                }
+            }
+
+            data = receiveMessage(socket);//игра окончена или фаза утра
+            System.out.println(data);
         }
+    }
+
+
+    public static void main(String[] args) throws IOException{
+        new Client().run();
     }
 
     public Client(int port, InetAddress address, String name) {
@@ -65,14 +154,15 @@ public class Client {
     public Client() {
     }
 
-    public static void sendMessage(String address, int port, String message) throws IOException
+    public static void sendMessage(DatagramSocket socket, String address, int port, String message) throws IOException
     {
+        
         byte[] data = message.getBytes();
         DatagramPacket packet = new DatagramPacket(data, 0, data.length, InetAddress.getByName(address), port);
         socket.send(packet);
     }
 
-    public static String receiveMessage() throws IOException
+    public static String receiveMessage(DatagramSocket socket) throws IOException
     {
         byte[] data = new byte[2048];
         DatagramPacket packet = new DatagramPacket(data, 0, data.length);

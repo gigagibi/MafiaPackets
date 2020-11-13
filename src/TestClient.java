@@ -11,5 +11,7 @@ public class TestClient {
         byte[] data = message.getBytes();
         DatagramPacket packetToSend = new DatagramPacket(data, 0, data.length, InetAddress.getByName("127.0.0.1"), 9087);
         socket.send(packetToSend);
+        message.replace("/", "");
+        System.out.println(message.replace("/", ""));
     }
 }
