@@ -75,7 +75,7 @@ public class Server {
         for(int i = 0; i < amountOfPlayers; i++)
         {
             if (players.get(i).getRole().equals("Мафия"))
-                mafiaList.append(players.get(i).getName()).append("  |  ");
+                mafiaList.append(players.get(i).getName()).append("  |  "); //если игрок -мафия, его имя добавляется в список
         }
 
         System.out.println("Город засыпает, просыпается мафия!");
@@ -104,28 +104,29 @@ public class Server {
             {
                 sendMessage(players.get(i).getAddress(), players.get(i).getPort(), "Город просыпается, пора обсудить, кого выгнать! Чтобы проголосовать, введите /имяигрока");
             }
-            int count = 0;
-
-            while (count < amountOfPlayers) {
+            int count = 0; //счетчик голосов
+            String nameOfVoted = null;
+            while (count < amountOfPlayers) {//пока не проголосовали все игроки
                 String msg = receiveMessage();
                 Matcher matcher = pattern.matcher(msg);
-                if (msg.contains("/"))
-                {
-                    if(matcher.find())
+                if(matcher.find())
+                    nameOfVoted = matcher.group().replace("|", ""); //получили имя проголосовавшего
+                if(getPlayerByName(nameOfVoted) != null) { //если проголосовавший не мертв
+
+                    if (msg.contains("/")) //если сообщение содержит голос
+                    {
                         msg = matcher.replaceAll("");
-                    votes.add(msg.replace("/", ""));
-                    count++;
-                    System.out.println("Осталось " + (amountOfPlayers -count) + " голосов");
-                    for (int i = 0; i < amountOfPlayers; i++)
+                        votes.add(msg.replace("/", ""));
+                        count++;
+                        System.out.println("Осталось " + (amountOfPlayers - count) + " голосов");
+                        for (int i = 0; i < amountOfPlayers; i++) {
+                            sendMessage(players.get(i).getAddress(), players.get(i).getPort(), "Осталось " + (amountOfPlayers - count) + " голосов");
+                        }
+                    } else //если сообщение - просто сообщение (обсуждение и тд)
                     {
-                        sendMessage(players.get(i).getAddress(), players.get(i).getPort(), "Осталось " + (amountOfPlayers - count) + " голосов");
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < amountOfPlayers; i++)
-                    {
-                        sendMessage(players.get(i).getAddress(), players.get(i).getPort(), msg);
+                        for (int i = 0; i < amountOfPlayers; i++) {
+                            sendMessage(players.get(i).getAddress(), players.get(i).getPort(), msg);
+                        }
                     }
                 }
             }
@@ -174,45 +175,46 @@ public class Server {
                 else
                     sendMessage(players.get(i).getAddress(), players.get(i).getPort(), "Город засыпает, просыпается мафия, чтобы выбрать жертву...");
             }
-            votes = new ArrayList<>();
-            count=0;
-            while (count < amountOfMafia) {
+            votes = new ArrayList<>(); //массив голосов обновляется
+            count=0;//счетчик голосов обновляется
+            while (count < amountOfMafia) {//пока не проголосовала вся мафия
                 String msg = receiveMessage();
-                if (msg.contains("/"))
-                {
-                    Matcher matcher = pattern.matcher(msg);
-                    if(matcher.find())
+                Matcher matcher = pattern.matcher(msg);
+                if(matcher.find())
+                    nameOfVoted= matcher.group().replace("|", ""); //получили имя проголосовавшего
+                if(getPlayerByName(nameOfVoted) != null) { //если проголосовавший не мертв
+                    if (msg.contains("/"))//если сообщение содержит голос
+                    {
                         msg = matcher.replaceAll("");
-                    votes.add(msg.replace("/", ""));
-                    count++;
-                    amountOfPlayers--;
-                    for (int i = 0; i < players.size(); i++)
+                        votes.add(msg.replace("/", ""));
+                        count++;
+                        amountOfPlayers--;
+                        for (int i = 0; i < players.size(); i++) {
+                            if (players.get(i).getRole().equals("Мафия"))
+                                sendMessage(players.get(i).getAddress(), players.get(i).getPort(), "Осталось " + (amountOfMafia - count) + " голосов");
+                        }
+                    } else//если обсуждение
                     {
-                        if(players.get(i).getRole().equals("Мафия"))
-                            sendMessage(players.get(i).getAddress(), players.get(i).getPort(), "Осталось " + (amountOfMafia - count) + " голосов");
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < amountOfPlayers; i++)
-                    {
-                        if(players.get(i).getRole().equals("Мафия"))
-                            sendMessage(players.get(i).getAddress(), players.get(i).getPort(), msg);
+                        for (int i = 0; i < amountOfPlayers; i++) {
+                            if (players.get(i).getRole().equals("Мафия"))
+                                sendMessage(players.get(i).getAddress(), players.get(i).getPort(), msg); //всем мафиози отпрваялется сообщение
+                        }
                     }
                 }
             }
-            roleOfKilled =getMaxFreqName(votes);
-            killedPlayer = getPlayerByName(roleOfKilled);
-            for(int i = 0; i < amountOfPlayers; i++)//жертва умирает
+
+            killedPlayer = getPlayerByName(getMaxFreqName(votes));
+            roleOfKilled = killedPlayer.getRole();
+            for(int i = 0; i < amountOfPlayers; i++)//оповещение всем игроками о смерти жертвы
             {
-                sendMessage(players.get(i).getAddress(), players.get(i).getPort(), "Убит игрок: " + roleOfKilled);
+                sendMessage(players.get(i).getAddress(), players.get(i).getPort(), "Убит игрок: " + killedPlayer.getName() + " Его роль: " + roleOfKilled);
             }
             players.remove(killedPlayer);
 
             if(amountOfMafia == 0 || amountOfPlayers == amountOfMafia)
                 break;
 
-            if(getComissar(players)!=null)
+            if(getComissar(players)!=null) //если комиссар не убит))
             {
                 Client comissar = getComissar(players);
                 System.out.println("Мафия засыпает, просыпается комиссар, чтобы проверить кого-то");
@@ -225,15 +227,14 @@ public class Server {
                     }
                 }
                 String msg = receiveMessage();
-                while(!msg.contains("/"))
+                while(!msg.contains(comissar.getName()) || !msg.contains("/")) //
                 {
                     msg = receiveMessage();
                 }
                 Matcher matcher = pattern.matcher(msg);
                 msg = matcher.replaceAll("");
                 msg = msg.replace("/", "");
-
-                sendMessage(comissar.getAddress(), comissar.getPort(), "Голосование завершено! Вы проверили игрока: " + msg + ". Его роль: " +getPlayerByName(msg).getRole());
+                sendMessage(comissar.getAddress(), comissar.getPort(), "Голосование завершено! Вы проверили игрока: " + msg + ". Его роль: " + getPlayerByName(msg).getRole());
             }
             if(amountOfMafia==0 || amountOfPlayers<=amountOfMafia)
                 gameIsOver = true;
@@ -258,14 +259,14 @@ public class Server {
     }
 
 
-    public static void sendMessage(InetAddress address, int port, String message) throws IOException
+    public static void sendMessage(InetAddress address, int port, String message) throws IOException //метод для отправки сообщений
     {
         byte[] data = message.getBytes();
         DatagramPacket packet = new DatagramPacket(data, 0, data.length, address, port);
         socket.send(packet);
     }
 
-    public static String receiveMessage() throws IOException
+    public static String receiveMessage() throws IOException//метод для получения сообщений
     {
         byte[] data = new byte[2048];
         DatagramPacket packet = new DatagramPacket(data, 0, data.length);
@@ -273,7 +274,7 @@ public class Server {
         return new String(packet.getData()).replace("\0", "");
     }
 
-    public static String getMaxFreqName(ArrayList<String> names)
+    public static String getMaxFreqName(ArrayList<String> names) //определяет, за кого больше всего проголосовали
     {
         int mFreq = 0;
         String mFreqName = null;
@@ -289,7 +290,7 @@ public class Server {
         return mFreqName;
     }
 
-    public static Client getPlayerByName(String name)
+    public static Client getPlayerByName(String name) //возвращает игрока по имени
     {
         for(Client p: players)
         {
@@ -299,7 +300,7 @@ public class Server {
         return null;
     }
 
-    public static Client getComissar(ArrayList<Client> players)
+    public static Client getComissar(ArrayList<Client> players) //возвращает комиссара
     {
         for(Client p: players)
         {

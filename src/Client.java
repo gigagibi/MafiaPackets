@@ -6,12 +6,12 @@ import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Client {
-    private int port;
-    private InetAddress address;
-    private String name, message;
-    private String role;
-    private DatagramSocket socket;
-    Thread write, output;
+    private int port; // порт игрока
+    private InetAddress address; // адрес игрока
+    private String name, message; // имя игрока и переменная для хранения текущего полученного сообщения (на всякий случай)
+    private String role;//роль игрока
+    private DatagramSocket socket; //сокет (набор ip-port)
+    Thread write, output; ////потоки для записи и отправления сообщений, для получения и вывода сообщений
 
     public void run() throws IOException{
         socket = new DatagramSocket();
@@ -30,15 +30,15 @@ public class Client {
         System.out.println(data);
 
 
-        AtomicReference<String> msg = new AtomicReference<String>();
-        msg.set("notnull");
-        message = "уаыуа";
+        AtomicReference<String> msg = new AtomicReference<String>(); //строка для сообщения в потоке write
+        msg.set("notnull"); //типо инициализация, наверное нужна
+        message = "уаыуа"; //типо инициализация, наверное нужна
 
-        data = receiveMessage(socket);//Жители спят, мафия знакомится (возвращается список мафиози)
+        data = receiveMessage(socket);//Жители спят, мафия знакомится (выводится список мафиози)
         System.out.println(data);
         while(data != "Игра окончена! Победили жители" || data!= "Игра окончена! Победила мафия")
         {
-            write = new Thread(new Runnable()
+            write = new Thread(new Runnable() //поток для записи и отправления сообщений
             {
                 @Override
                 public void run() {
@@ -53,7 +53,7 @@ public class Client {
                     }
                 }
             });
-            output = new Thread(new Runnable()
+            output = new Thread(new Runnable() //поток для получения и вывода сообщений
             {
                 @Override
                 public void run() {
@@ -71,7 +71,7 @@ public class Client {
 
             data = receiveMessage(socket); //Город просыпается, обсуждается, кто мафия
             System.out.println(data);
-            write.start();
+            write.start();//начинается общение
             output.start(); //начинается общение
 
             data = receiveMessage(socket);//сообщение о роли выбывшего
@@ -94,11 +94,6 @@ public class Client {
             if(data.contains("Комиссар, введите имя игрока"))
             {
                 output.start();
-                /*if(message.contains("Голосование завершено!"))
-                {
-                    write.interrupt();
-                    output.interrupt();
-                }*/
             }
 
             data = receiveMessage(socket);//игра окончена или фаза утра
@@ -152,7 +147,7 @@ public class Client {
     public Client() {
     }
 
-    public static void sendMessage(DatagramSocket socket, String address, int port, String message) throws IOException
+    public static void sendMessage(DatagramSocket socket, String address, int port, String message) throws IOException //метод дял отправки сообщения на сервер
     {
         
         byte[] data = message.getBytes();
@@ -160,11 +155,11 @@ public class Client {
         socket.send(packet);
     }
 
-    public static String receiveMessage(DatagramSocket socket) throws IOException
+    public static String receiveMessage(DatagramSocket socket) throws IOException //метод для получения сообщений от сервера
     {
         byte[] data = new byte[2048];
         DatagramPacket packet = new DatagramPacket(data, 0, data.length);
         socket.receive(packet);
-        return new String(packet.getData()).replace("\0", "");
+        return new String(packet.getData()).replace("\0", ""); //в сообщении перед его возвратом удаляются нулевые байты
     }
 }
