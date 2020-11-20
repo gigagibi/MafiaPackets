@@ -11,6 +11,7 @@ public class Client {
     private String name, message;
     private String role;
     private DatagramSocket socket;
+    Thread write, output;
 
     public void run() throws IOException{
         socket = new DatagramSocket();
@@ -37,7 +38,7 @@ public class Client {
         System.out.println(data);
         while(data != "Игра окончена! Победили жители" || data!= "Игра окончена! Победила мафия")
         {
-            Thread write = new Thread(new Runnable()
+            write = new Thread(new Runnable()
             {
                 @Override
                 public void run() {
@@ -52,7 +53,7 @@ public class Client {
                     }
                 }
             });
-            Thread output = new Thread(new Runnable()
+            output = new Thread(new Runnable()
             {
                 @Override
                 public void run() {
@@ -164,6 +165,6 @@ public class Client {
         byte[] data = new byte[2048];
         DatagramPacket packet = new DatagramPacket(data, 0, data.length);
         socket.receive(packet);
-        return new String(packet.getData());
+        return new String(packet.getData()).replace("\0", "");
     }
 }
